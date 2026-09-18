@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Người Mài Rìu - MindMap Builder Pro Max</title>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/standalone/umd/vis-network.min.js"></script>
+    <style>
+        body { margin: 0; padding: 0; display: flex; height: 100vh; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; }
+        
+        #toolbox {
+            width: 300px; background-color: #012B1D; color: white; padding: 20px;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.5); z-index: 10; display: flex; flex-direction: column; overflow-y: auto;
+        }
+        #toolbox h2 { color: #D4AF37; margin-top: 0; font-size: 20px; text-transform: uppercase; border-bottom: 1px solid #D4AF37; padding-bottom: 10px; }
+        
+        .click-item {
+            padding: 12px; margin-bottom: 10px; border-radius: 8px; cursor: pointer;
+            text-align: center; font-weight: bold; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .click-item:hover { transform: translateY(-2px); box-shadow: 0 6px 10px rgba(0,0,0,0.5); }
+        .item-main { background-color: #D4AF37; color: #012B1D; border: 2px solid #FFF; } 
+        
+        .action-btn {
+            background-color: #00796B; color: white; border: 1px solid #D4AF37; border-radius: 5px; 
+            padding: 8px; margin-bottom: 8px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.2s;
+        }
+        .action-btn:hover { background-color: #00a884; color: #012B1D; }
+        
+        #workspace { flex: 1; position: relative; background-color: #f9f9f9; height: 100%; }
+        #mynetwork { width: 100%; height: 100%; position: absolute; top: 0; left: 0; outline: none; }
+        
+        #node-menu {
+            position: absolute; display: none; background: #D4AF37; padding: 5px; 
+            border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 100;
+            border: 2px solid #012B1D;
+        }
+        
+        #edge-menu {
+            position: absolute; display: none; background: #012B1D; padding: 5px; 
+            border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 100;
+            border: 2px solid #D4AF37;
+        }
+
+        .f-btn {
+            background: #004D40; color: white; border: 1px solid #D4AF37; padding: 5px 8px;
+            margin: 2px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 13px;
+        }
+        .f-btn:hover { background: #D4AF37; color: #012B1D; }
+        #node-menu .f-btn { background: #012B1D; color: white; border: none; }
+        #node-menu .f-btn:hover { background: #004D40; color: white; }
+    </style>
+</head>
+<body>
+
+    <div id="toolbox">
+        <h2>🛠️ Kho Vật Liệu</h2>
+        <div class="click-item item-main" onclick="spawnMainNode()">➕ TẠO Ý CHÍNH (GỐC)</div>
+
+        <h3 style="color: #D4AF37; font-size: 15px; border-bottom: 1px dashed #004D40; padding-bottom: 5px; margin-top: 15px;">⚙️ ĐIỀU CHỈNH TOÀN BỘ SƠ ĐỒ</h3>
+        
+        <label style="font-size: 13px;">Độ dài tổng thể: <span id="len-val">150</span></label>
+        <input type="range" min="50" max="400" value="150" style="width: 100%; margin-bottom: 10px;" onchange="updateSpring(this.value)" oninput="document.getElementById('len-val').innerText=this.value">
+        <button class="action-btn" onclick="stopPhysics()">❄️ Đóng Băng / Mở Chuyển Động</button>
+
+        <div style="font-size: 12px; color: #ddd; margin-top: 15px; padding: 12px; background: rgba(0,0,0,0.3); border-radius: 5px; line-height: 1.6;">
+            <b>HƯỚNG DẪN MENU THÔNG MINH:</b><br>
+            • <b>Click vào 1 NHÁNH:</b> Hiện menu đẻ nhánh con, đổi hình dáng, chèn ảnh.<br>
+            • <b>Click vào 1 SỢI DÂY:</b> Hiện menu tạo khớp uốn ziczac, đổi kiểu dây (cong/thẳng/đứt).
+        </div>
+    </div>
+
+    <div id="workspace">
+        <div id="mynetwork"></div>
+        
+        <div id="node-menu">
+            <button class="f-btn" onclick="addBranchFromNode()">➕ Đẻ Nhánh</button>
+            <button class="f-btn" onclick="toggleCollapse()">➖ Ẩn/Hiện</button>
+            <button class="f-btn" onclick="changeShapeFast()">🔄 Đổi Hình</button>
+            <button class="f-btn" onclick="addImageFast()">🖼️ Chèn Ảnh</button>
+        </div>
+
+        <div id="edge-menu">
+            <button class="f-btn" onclick="addBendPoint()">➰ Tạo Khớp Uốn</button>
+            <button class="f-btn" onclick="toggleSingleEdgeStyle()">〰️ Cong / Thẳng</button>
+            <button class="f-btn" onclick="toggleSingleEdgeDashes()">╍ Đứt / Liền</button>
+            <button class="f-btn" onclick="deleteEdgeFast()" style="background:#d32f2f; color:white; border:none;">✖ Xóa Dây</button>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        var nodes, edges, network;
+        var isFrozen = false;
+        
+        var lastClickCanvas = {x: 0, y: 0}; 
+        var activeNodeId = null; // Biến khóa mục tiêu Nhánh
+        var activeEdgeId = null; // Biến khóa mục tiêu Dây
+
+        window.onload = function() {
+            try {
+                nodes = new vis.DataSet([]);
+                edges = new vis.DataSet([]);
+                
+                var container = document.getElementById('mynetwork');
+                var data = { nodes: nodes, edges: edges };
+                var options = {
+                    physics: { stabilization: false, barnesHut: { springLength: 150, gravitationalConstant: -2000, centralGravity: 0.1 } },
+                    edges: { smooth: { type: 'dynamic' } },
+                    manipulation: {
+                        enabled: true, initiallyActive: true, addNode: false,
+                        addEdge: function(edgeData, callback) {
+                            if (edgeData.from === edgeData.to) { callback(null); return; }
+                            edgeData.color = {color: '#D4AF37', highlight: '#00a884'};
+                            callback(edgeData);
+                        },
+                        editNode: function(nodeData, callback) {
+                            var newLabel = prompt("Nhập nội dung mới:", nodeData.label);
+                            if (newLabel !== null) { nodeData.label = newLabel; callback(nodeData); } else { callback(null); }
+                        }
+                    },
+                    locales: { vi: { edit: 'Sửa', del: 'Xóa mục chọn', back: 'Quay lại', addEdge: '🔗 KÉO NỐI DÂY', editNode: '📝 ĐỔI TÊN NÚT', close: '✖ Đóng' } }, locale: 'vi'
+                };
+                
+                network = new vis.Network(container, data, options);
+
+                var nodeMenu = document.getElementById('node-menu');
+                var edgeMenu = document.getElementById('edge-menu');
+                
+                network.on("click", function(params) {
+                    lastClickCanvas = params.pointer.canvas;
+                    var domPos = params.pointer.DOM;
+
+                    if (params.nodes.length > 0) {
+                        activeNodeId = params.nodes[0];
+                        activeEdgeId = null;
+                        
+                        edgeMenu.style.display = "none";
+                        nodeMenu.style.display = "block";
+                        nodeMenu.style.left = (domPos.x + 20) + "px";
+                        nodeMenu.style.top = (domPos.y - 20) + "px";
+                    } else if (params.edges.length > 0) {
+                        activeEdgeId = params.edges[0];
+                        activeNodeId = null;
+                        
+                        nodeMenu.style.display = "none";
+                        edgeMenu.style.display = "block";
+                        edgeMenu.style.left = (domPos.x + 10) + "px";
+                        edgeMenu.style.top = (domPos.y - 20) + "px";
+                    } else {
+                        activeNodeId = null;
+                        activeEdgeId = null;
+                        nodeMenu.style.display = "none";
+                        edgeMenu.style.display = "none";
+                    }
+                });
+
+                network.on("dragging", function() { nodeMenu.style.display = "none"; edgeMenu.style.display = "none"; });
+                network.on("zoom", function() { nodeMenu.style.display = "none"; edgeMenu.style.display = "none"; });
+                network.on("doubleClick", function (params) { if (params.nodes.length > 0) network.editNode(); });
+                
+            } catch (err) {
+                alert("⚠️ Lỗi khởi tạo hệ thống: " + err.message);
+            }
+        };
+
+        function spawnMainNode() {
+            if (!nodes) return;
+            var id = new Date().getTime();
+            var pos = network.getViewPosition();
+            nodes.add({ id: id, x: pos.x, y: pos.y, label: "HỆ THỐNG CHÍNH", color: { background: "#D4AF37", border: "#b8952b" }, font: { size: 24, color: "#012B1D", face: "bold" }, shape: "box" });
+        }
+
+        function addBranchFromNode() {
+            if (!activeNodeId) return;
+            var childId = new Date().getTime();
+            var parentPos = network.getPositions([activeNodeId])[activeNodeId];
+
+            nodes.add({ id: childId, label: "Nhánh mới", x: parentPos.x + 100, y: parentPos.y + (Math.random()*60 - 30), shape: "ellipse", color: { background: "#004D40", border: "#00796B" }, font: { color: "white" } });
+            edges.add({ from: activeNodeId, to: childId, color: {color: '#D4AF37', highlight: '#00a884'} });
+            document.getElementById('node-menu').style.display = "none";
+        }
+
+        function toggleCollapse() {
+            if (!activeNodeId) return;
+            var connectedNodes = network.getConnectedNodes(activeNodeId, "to"); 
+            if(connectedNodes.length > 0) {
+                var isHidden = nodes.get(connectedNodes[0]).hidden;
+                var updates = connectedNodes.map(id => ({id: id, hidden: !isHidden}));
+                nodes.update(updates);
+            }
+        }
+
+        function changeShapeFast() {
+            if (!activeNodeId) return;
+            var shapes = ['box', 'ellipse', 'circle', 'database', 'diamond', 'star', 'triangle', 'hexagon'];
+            var current = nodes.get(activeNodeId).shape || 'ellipse';
+            var next = (shapes.indexOf(current) + 1) % shapes.length;
+            nodes.update({ id: activeNodeId, shape: shapes[next], image: null });
+        }
+
+        function addImageFast() {
+            if (!activeNodeId) return;
+            var url = prompt("Dán Link hình ảnh vào đây:");
+            if(url) nodes.update({ id: activeNodeId, shape: 'image', image: url, size: 40 });
+        }
+
+        function addBendPoint() {
+            if (!activeEdgeId) return;
+            var edgeData = edges.get(activeEdgeId);
+            if (!edgeData) return;
+            
+            var jointId = new Date().getTime();
+            
+            nodes.add({
+                id: jointId, x: lastClickCanvas.x, y: lastClickCanvas.y, 
+                shape: 'dot', size: 6, color: '#D4AF37', 
+                title: 'Khớp nối (Kéo để chỉnh khúc uốn)',
+                physics: false 
+            });
+            
+            edges.add([
+                { from: edgeData.from, to: jointId, color: edgeData.color, dashes: edgeData.dashes, smooth: {enabled: false} },
+                { from: jointId, to: edgeData.to, color: edgeData.color, dashes: edgeData.dashes, smooth: {enabled: false} }
+            ]);
+            
+            edges.remove(activeEdgeId);
+            document.getElementById('edge-menu').style.display = "none";
+        }
+
+        function toggleSingleEdgeStyle() {
+            if (!activeEdgeId) return;
+            var edgeData = edges.get(activeEdgeId);
+            var isSmooth = edgeData.smooth && edgeData.smooth.enabled !== false;
+            edges.update({ id: activeEdgeId, smooth: { enabled: !isSmooth, type: 'dynamic' } });
+        }
+
+        function toggleSingleEdgeDashes() {
+            if (!activeEdgeId) return;
+            var edgeData = edges.get(activeEdgeId);
+            edges.update({ id: activeEdgeId, dashes: !edgeData.dashes });
+        }
+        
+        function deleteEdgeFast() {
+            if (activeEdgeId) edges.remove(activeEdgeId);
+            document.getElementById('edge-menu').style.display = "none";
+        }
+
+        function updateSpring(val) { network.setOptions({ physics: { barnesHut: { springLength: Number(val) } } }); }
+        function stopPhysics() { isFrozen = !isFrozen; network.setOptions({ physics: { enabled: !isFrozen } }); }
+    </script>
+</body>
+</html>
