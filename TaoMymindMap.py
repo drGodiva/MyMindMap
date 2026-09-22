@@ -7,16 +7,15 @@ import urllib.error
 st.set_page_config(layout="wide", page_title="Người Mài Rìu - AI MindMap")
 st.markdown("<style>.block-container { padding: 0rem; }</style>", unsafe_allow_html=True)
 
-# Lấy API Key từ Két sắt Secrets
+# Lấy tự động API Key từ Két sắt Secrets (Giấu kín hoàn toàn trên GitHub)
 api_key = st.secrets.get("GEMINI_API_KEY", "").strip()
 
-# Nhận yêu cầu gọi AI từ giao diện gửi lên
+# Xử lý yêu cầu tạo nhánh AI từ giao diện gửi lên
 ai_data_payload = {"ideas": []}
 query_params = st.query_params
 if "ai_node" in query_params:
     node_label = query_params["ai_node"]
     try:
-        # Gọi API trực tiếp qua HTTP POST, đính kèm khóa AQ... qua URL an toàn 100%
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
         
         prompt_str = f'Tôi đang vẽ sơ đồ tư duy. Hãy liệt kê 3 đến 5 ý phụ thật ngắn gọn (tối đa 5 từ mỗi ý) để phát triển cho từ khóa: "{node_label}". TRẢ VỀ DUY NHẤT MỘT MẢNG JSON hợp lệ chứa các chuỗi, ví dụ: ["ý 1", "ý 2", "ý 3"]. Tuyệt đối không giải thích thêm, không có dấu markdown.'
