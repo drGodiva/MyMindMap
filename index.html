@@ -67,87 +67,84 @@
         var lastClickCanvas = {x: 0, y: 0}; 
         var isFrozen = false;
 
-        // Dùng setTimeout để đợi Streamlit render xong khung hình hoàn toàn rồi mới dựng mạng
         window.addEventListener('load', function() {
-            setTimeout(initMindMap, 200);
-        });
+            setTimeout(function() {
+                try {
+                    nodes = new vis.DataSet([]);
+                    edges = new vis.DataSet([]);
+                    var container = document.getElementById('mynetwork');
+                    if (!container) return;
 
-        function initMindMap() {
-            try {
-                nodes = new vis.DataSet([]);
-                edges = new vis.DataSet([]);
-                var container = document.getElementById('mynetwork');
-                if (!container) return;
-
-                var data = { nodes: nodes, edges: edges };
-                var options = {
-                    physics: { stabilization: false, barnesHut: { springLength: 150, gravitationalConstant: -2000, centralGravity: 0.1 } },
-                    edges: { smooth: { type: 'dynamic' } },
-                    manipulation: {
-                        enabled: true, initiallyActive: true, addNode: false,
-                        addEdge: function(edgeData, callback) {
-                            if (edgeData.from === edgeData.to) { callback(null); return; }
-                            edgeData.color = {color: '#D4AF37', highlight: '#00a884'};
-                            callback(edgeData);
-                        },
-                        editNode: function(nodeData, callback) {
-                            var newLabel = prompt("Nhập nội dung mới:", nodeData.label);
-                            if (newLabel !== null) { nodeData.label = newLabel; callback(nodeData); } else { callback(null); }
+                    var data = { nodes: nodes, edges: edges };
+                    var options = {
+                        physics: { stabilization: false, barnesHut: { springLength: 150, gravitationalConstant: -2000, centralGravity: 0.1 } },
+                        edges: { smooth: { type: 'dynamic' } },
+                        manipulation: {
+                            enabled: true,
+                            addEdge: function(edgeData, callback) {
+                                if (edgeData.from === edgeData.to) { callback(null); return; }
+                                edgeData.color = {color: '#D4AF37', highlight: '#00a884'};
+                                callback(edgeData);
+                            }
                         }
-                    },
-                    locales: { vi: { edit: 'Sửa', del: 'Xóa', back: 'Quay lại', addEdge: '🔗 KÉO NỐI DÂY', editNode: '📝 ĐỔI TÊN NÚT' } }, locale: 'vi'
-                };
-                
-                network = new vis.Network(container, data, options);
-                var nodeMenu = document.getElementById('node-menu');
-                var edgeMenu = document.getElementById('edge-menu');
-                
-                network.on("click", function(params) {
-                    lastClickCanvas = params.pointer.canvas;
-                    var domPos = params.pointer.DOM;
-                    if (params.nodes.length > 0) {
-                        activeNodeId = params.nodes[0];
-                        activeEdgeId = null;
-                        edgeMenu.style.display = "none";
-                        nodeMenu.style.display = "block";
-                        nodeMenu.style.left = (domPos.x + 20) + "px";
-                        nodeMenu.style.top = (domPos.y - 20) + "px";
-                    } else if (params.edges.length > 0) {
-                        activeEdgeId = params.edges[0];
-                        activeNodeId = null;
-                        nodeMenu.style.display = "none";
-                        edgeMenu.style.display = "block";
-                        edgeMenu.style.left = (domPos.x + 10) + "px";
-                        edgeMenu.style.top = (domPos.y - 20) + "px";
-                    } else {
-                        activeNodeId = null; activeEdgeId = null;
-                        nodeMenu.style.display = "none"; edgeMenu.style.display = "none";
-                    }
-                });
+                    };
+                    
+                    network = new vis.Network(container, data, options);
+                    var nodeMenu = document.getElementById('node-menu');
+                    var edgeMenu = document.getElementById('edge-menu');
+                    
+                    network.on("click", function(params) {
+                        lastClickCanvas = params.pointer.canvas;
+                        var domPos = params.pointer.DOM;
+                        if (params.nodes.length > 0) {
+                            activeNodeId = params.nodes[0];
+                            activeEdgeId = null;
+                            edgeMenu.style.display = "none";
+                            nodeMenu.style.display = "block";
+                            nodeMenu.style.left = (domPos.x + 20) + "px";
+                            nodeMenu.style.top = (domPos.y - 20) + "px";
+                        } else if (params.edges.length > 0) {
+                            activeEdgeId = params.edges[0];
+                            activeNodeId = null;
+                            nodeMenu.style.display = "none";
+                            edgeMenu.style.display = "block";
+                            edgeMenu.style.left = (domPos.x + 10) + "px";
+                            edgeMenu.style.top = (domPos.y - 20) + "px";
+                        } else {
+                            activeNodeId = null; activeEdgeId = null;
+                            nodeMenu.style.display = "none"; edgeMenu.style.display = "none";
+                        }
+                    });
 
-                network.on("dragging", function() { nodeMenu.style.display = "none"; edgeMenu.style.display = "none"; });
-                network.on("zoom", function() { nodeMenu.style.display = "none"; edgeMenu.style.display = "none"; });
-                network.on("doubleClick", function (params) { if (params.nodes.length > 0) network.editNode(); });
+                    network.on("dragging", function() { nodeMenu.style.display = "none"; edgeMenu.style.display = "none"; });
+                    network.on("zoom", function() { nodeMenu.style.display = "none"; edgeMenu.style.display = "none"; });
+                    network.on("doubleClick", function (params) { 
+                        if (params.nodes.length > 0) {
+                            var newLabel = prompt("Nhập nội dung mới:", nodes.get(params.nodes[0]).label);
+                            if (newLabel !== null) nodes.update({id: params.nodes[0], label: newLabel});
+                        } 
+                    });
 
-                // Gán sự kiện nút bấm
-                document.getElementById('btn-spawn').onclick = spawnMainNode;
-                document.getElementById('btn-freeze').onclick = stopPhysics;
-                document.getElementById('range-spring').oninput = function() {
-                    document.getElementById('len-val').innerText = this.value;
-                    updateSpring(this.value);
-                };
-                document.getElementById('btn-ask-ai').onclick = askAIFast;
-                document.getElementById('btn-add-branch').onclick = addBranchFromNode;
-                document.getElementById('btn-collapse').onclick = toggleCollapse;
-                document.getElementById('btn-shape').onclick = changeShapeFast;
-                document.getElementById('btn-bend').onclick = addBendPoint;
-                document.getElementById('btn-edge-style').onclick = toggleSingleEdgeStyle;
-                document.getElementById('btn-delete-edge').onclick = deleteEdgeFast;
+                    // Gắn sự kiện nút bấm an toàn
+                    document.getElementById('btn-spawn').onclick = spawnMainNode;
+                    document.getElementById('btn-freeze').onclick = stopPhysics;
+                    document.getElementById('range-spring').oninput = function() {
+                        document.getElementById('len-val').innerText = this.value;
+                        updateSpring(this.value);
+                    };
+                    document.getElementById('btn-ask-ai').onclick = askAIFast;
+                    document.getElementById('btn-add-branch').onclick = addBranchFromNode;
+                    document.getElementById('btn-collapse').onclick = toggleCollapse;
+                    document.getElementById('btn-shape').onclick = changeShapeFast;
+                    document.getElementById('btn-bend').onclick = addBendPoint;
+                    document.getElementById('btn-edge-style').onclick = toggleSingleEdgeStyle;
+                    document.getElementById('btn-delete-edge').onclick = deleteEdgeFast;
 
-            } catch (err) {
-                alert("Lỗi khởi tạo: " + err.message);
-            }
-        }
+                } catch (err) {
+                    alert("Lỗi khởi tạo: " + err.message);
+                }
+            }, 300);
+        });
 
         function spawnMainNode() {
             var id = new Date().getTime();
