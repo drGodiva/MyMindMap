@@ -67,12 +67,18 @@
         var lastClickCanvas = {x: 0, y: 0}; 
         var isFrozen = false;
 
-        // Khởi tạo ngay khi trang tải xong
-        window.addEventListener('DOMContentLoaded', (event) => {
+        // Dùng setTimeout để đợi Streamlit render xong khung hình hoàn toàn rồi mới dựng mạng
+        window.addEventListener('load', function() {
+            setTimeout(initMindMap, 200);
+        });
+
+        function initMindMap() {
             try {
                 nodes = new vis.DataSet([]);
                 edges = new vis.DataSet([]);
                 var container = document.getElementById('mynetwork');
+                if (!container) return;
+
                 var data = { nodes: nodes, edges: edges };
                 var options = {
                     physics: { stabilization: false, barnesHut: { springLength: 150, gravitationalConstant: -2000, centralGravity: 0.1 } },
@@ -123,7 +129,7 @@
                 network.on("zoom", function() { nodeMenu.style.display = "none"; edgeMenu.style.display = "none"; });
                 network.on("doubleClick", function (params) { if (params.nodes.length > 0) network.editNode(); });
 
-                // Gán sự kiện cho các nút bấm an toàn tuyệt đối
+                // Gán sự kiện nút bấm
                 document.getElementById('btn-spawn').onclick = spawnMainNode;
                 document.getElementById('btn-freeze').onclick = stopPhysics;
                 document.getElementById('range-spring').oninput = function() {
@@ -141,7 +147,7 @@
             } catch (err) {
                 alert("Lỗi khởi tạo: " + err.message);
             }
-        });
+        }
 
         function spawnMainNode() {
             var id = new Date().getTime();
