@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Người Mài Rìu - AI MindMap Pro Max v2</title>
+    <title>Người Mài Rìu - AI MindMap Pro Max</title>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/standalone/umd/vis-network.min.js"></script>
     <style>
         body { margin: 0; padding: 0; display: flex; height: 100vh; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; background-color: #f9f9f9;}
@@ -30,7 +30,7 @@
     <div id="toolbox">
         <h2>🧠 Hệ Thống AI</h2>
         <div style="background: #004D40; border: 1px dashed #D4AF37; padding: 10px; border-radius: 5px; text-align: center; color: #D4AF37; font-weight: bold; margin-bottom: 20px;">
-            ✅ Kịch bản Backend v2 Sẵn Sàng.
+            ✅ Động cơ AI Trực Tiếp Sẵn Sàng.
         </div>
         
         <h2>🛠️ Kho Vật Liệu</h2>
@@ -93,6 +93,10 @@
                     var nodeMenu = document.getElementById('node-menu');
                     var edgeMenu = document.getElementById('edge-menu');
                     
+                    // Tạo sẵn một nút gốc mặc định để test nhanh
+                    var rootId = 1;
+                    nodes.add({ id: rootId, label: "GIẢM CÂN AN TOÀN", x: 0, y: 0, color: { background: "#D4AF37", border: "#b8952b" }, font: { size: 20, color: "#012B1D", face: "bold" }, shape: "box" });
+
                     network.on("click", function(params) {
                         lastClickCanvas = params.pointer.canvas;
                         var domPos = params.pointer.DOM;
@@ -125,19 +129,44 @@
                         } 
                     });
 
+                    // Gắn sự kiện nút bấm
                     document.getElementById('btn-spawn').onclick = spawnMainNode;
                     document.getElementById('btn-freeze').onclick = stopPhysics;
                     document.getElementById('range-spring').oninput = function() {
                         document.getElementById('len-val').innerText = this.value;
                         updateSpring(this.value);
                     };
-                    document.getElementById('btn-ask-ai').onclick = askAIFast;
+                    document.getElementById('btn-ask-ai').onclick = askAIThroughPython;
                     document.getElementById('btn-add-branch').onclick = addBranchFromNode;
                     document.getElementById('btn-collapse').onclick = toggleCollapse;
                     document.getElementById('btn-shape').onclick = changeShapeFast;
                     document.getElementById('btn-bend').onclick = addBendPoint;
                     document.getElementById('btn-edge-style').onclick = toggleSingleEdgeStyle;
                     document.getElementById('btn-delete-edge').onclick = deleteEdgeFast;
+
+                    // KIỂM TRA XEM PYTHON CÓ TRẢ VỀ KẾT QUẢ AI KHÔNG ĐỂ VẼ LÊN MẠNG
+                    if (window.SERVER_AI_RESULT) {
+                        if (window.SERVER_AI_RESULT.error) {
+                            alert("⚠️ Lỗi AI: " + window.SERVER_AI_RESULT.error);
+                        } else if (window.SERVER_AI_RESULT.ideas && window.SERVER_AI_RESULT.ideas.length > 0) {
+                            // Tự động tìm node gốc hoặc tạo node mới dựa trên kết quả trả về
+                            var targetName = window.SERVER_AI_RESULT.node || "GIẢM CÂN AN TOÀN";
+                            var parentId = rootId;
+                            
+                            // Tìm ID của node đang được hỏi
+                            nodes.forEach(function(node) {
+                                if (node.label === targetName) parentId = node.id;
+                            });
+
+                            var parentPos = network.getPositions([parentId])[parentId] || {x: 0, y: 0};
+                            window.SERVER_AI_RESULT.ideas.forEach((idea, index) => {
+                                var childId = new Date().getTime() + index;
+                                var yOffset = (index - Math.floor(window.SERVER_AI_RESULT.ideas.length/2)) * 70;
+                                nodes.add({ id: childId, label: idea.toUpperCase(), x: parentPos.x + 200, y: parentPos.y + yOffset, shape: "box", color: { background: "#012B1D", border: "#D4AF37" }, font: { color: "#D4AF37", face: "bold" } });
+                                edges.add({ from: parentId, to: childId, color: {color: '#D4AF37'} });
+                            });
+                        }
+                    }
 
                 } catch (err) {
                     alert("Lỗi khởi tạo: " + err.message);
@@ -148,14 +177,14 @@
         function spawnMainNode() {
             var id = new Date().getTime();
             var pos = network.getViewPosition();
-            nodes.add({ id: id, x: pos.x, y: pos.y, label: "Ý TƯỞNG GỐC", color: { background: "#D4AF37", border: "#b8952b" }, font: { size: 24, color: "#012B1D", face: "bold" }, shape: "box" });
+            nodes.add({ id: id, x: pos.x, y: pos.y, label: "Ý TƯỞNG MỚI", color: { background: "#D4AF37", border: "#b8952b" }, font: { size: 20, color: "#012B1D", face: "bold" }, shape: "box" });
         }
 
         function addBranchFromNode() {
             if (!activeNodeId) return;
             var childId = new Date().getTime();
             var parentPos = network.getPositions([activeNodeId])[activeNodeId];
-            nodes.add({ id: childId, label: "Nhánh mới", x: parentPos.x + 150, y: parentPos.y + (Math.random()*60 - 30), shape: "ellipse", color: { background: "#004D40", border: "#00796B" }, font: { color: "white" } });
+            nodes.add({ id: childId, label: "Nhánh mới", x: parentPos.x + 180, y: parentPos.y + (Math.random()*60 - 30), shape: "ellipse", color: { background: "#004D40", border: "#00796B" }, font: { color: "white" } });
             edges.add({ from: activeNodeId, to: childId, color: {color: '#D4AF37'} });
             document.getElementById('node-menu').style.display = "none";
         }
@@ -178,38 +207,19 @@
             nodes.update({ id: activeNodeId, shape: shapes[next], image: null });
         }
 
-        // ================= KẾT NỐI PYTHON BACKEND SẠCH SẼ =================
-        async function askAIFast() {
-            if (!activeNodeId) return;
+        // ================= GỌI AI THÔNG QUA REOAD AN TOÀN (BỎ FETCH) =================
+        function askAIThroughPython() {
+            if (!activeNodeId) {
+                alert("⚠️ Thầy chưa chọn node nào để AI gợi ý!");
+                return;
+            }
             var nodeLabel = nodes.get(activeNodeId).label;
             var btnAI = document.getElementById('btn-ask-ai');
             btnAI.innerText = "⏳ Đang tư duy...";
             btnAI.style.background = "#ff9800";
 
-            try {
-                const response = await fetch(`?action=ask_ai&node=${encodeURIComponent(nodeLabel)}`);
-                const result = await response.json();
-                
-                if(!result.success) throw new Error(result.error);
-
-                var ideas = result.ideas;
-                var parentPos = network.getPositions([activeNodeId])[activeNodeId];
-
-                ideas.forEach((idea, index) => {
-                    var childId = new Date().getTime() + index;
-                    var yOffset = (index - Math.floor(ideas.length/2)) * 60; 
-                    
-                    nodes.add({ id: childId, label: idea.toUpperCase(), x: parentPos.x + 180, y: parentPos.y + yOffset, shape: "box", color: { background: "#012B1D", border: "#D4AF37" }, font: { color: "#D4AF37", face: "bold" } });
-                    edges.add({ from: activeNodeId, to: childId, color: {color: '#D4AF37'} });
-                });
-
-            } catch(e) {
-                alert("⚠️ Lỗi AI từ Backend: " + e.message);
-            }
-
-            btnAI.innerText = "🤖 AI Gợi Ý";
-            btnAI.style.background = "#d32f2f";
-            document.getElementById('node-menu').style.display = "none";
+            // Chuyển hướng trang kèm theo tên node để Python xử lý trực tiếp
+            window.location.href = window.location.pathname + '?ai_node=' + encodeURIComponent(nodeLabel);
         }
 
         function addBendPoint() {
