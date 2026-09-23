@@ -318,14 +318,16 @@
             }
             
             // CHỐT LƯU TRÍ NHỚ TRƯỚC KHI TẢI TRANG ĐI HỎI AI
-            saveMapToMemory();
+        saveMapToMemory();
 
-            var nodeLabel = nodes.get(activeNodeId).label;
-            var btnAI = document.getElementById('btn-ask-ai');
-            btnAI.innerText = "⏳ Đang tư duy...";
-            btnAI.style.background = "#ff9800";
-            window.location.href = window.location.pathname + '?ai_node=' + encodeURIComponent(nodeLabel);
-        }
+        var nodeLabel = nodes.get(activeNodeId).label;
+        var btnAI = document.getElementById('btn-ask-ai');
+        btnAI.innerText = "⏳ Đang tư duy...";
+        btnAI.style.background = "#ff9800";
+        
+        // Ép trang mẹ (Streamlit gốc) nhận lệnh và tải lại, xuyên qua môi trường ảo
+        window.parent.location.search = '?ai_node=' + encodeURIComponent(nodeLabel);
+    }
 
         function addBendPoint() {
             if (!activeEdgeId) return;
