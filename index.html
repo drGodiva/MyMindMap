@@ -311,11 +311,27 @@
             saveMapToMemory();
         }
 
-        function askAIThroughPython() {
+       function askAIThroughPython() {
             if (!activeNodeId) {
                 alert("⚠️ Thầy chưa chọn node nào để AI gợi ý!");
                 return;
             }
+            
+            // CHỐT LƯU TRÍ NHỚ TRƯỚC KHI TẢI TRANG ĐI HỎI AI
+            saveMapToMemory();
+
+            var nodeLabel = nodes.get(activeNodeId).label;
+            var btnAI = document.getElementById('btn-ask-ai');
+            btnAI.innerText = "⏳ Đang tư duy...";
+            btnAI.style.background = "#ff9800";
+
+            // TUYỆT CHIÊU VƯỢT RÀO: Tạo thẻ link tàng hình ép tải lại trang gốc
+            var hiddenLink = document.createElement("a");
+            hiddenLink.href = "/?ai_node=" + encodeURIComponent(nodeLabel);
+            hiddenLink.target = "_top"; // Ép bung ra toàn màn hình trang mẹ
+            document.body.appendChild(hiddenLink);
+            hiddenLink.click(); // Tự động bấm link
+        }
             
             // CHỐT LƯU TRÍ NHỚ TRƯỚC KHI TẢI TRANG ĐI HỎI AI
         saveMapToMemory();
