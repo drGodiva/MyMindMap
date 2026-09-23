@@ -13,16 +13,19 @@
         .item-main { background-color: #D4AF37; color: #012B1D; border: 2px solid #FFF; } 
         .action-btn { background-color: #00796B; color: white; border: 1px solid #D4AF37; border-radius: 5px; padding: 8px; margin-bottom: 8px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.2s; }
         .action-btn:hover { background-color: #00a884; color: #012B1D; }
-        #workspace { flex: 1; position: relative; background-color: #ffffff; height: 100%; }
+        
+        /* ĐỔI NỀN MẶC ĐỊNH SANG ĐEN SANG TRỌNG */
+        #workspace { flex: 1; position: relative; background-color: #0f1714; height: 100%; transition: background-color 0.3s; }
         #mynetwork { width: 100%; height: 100%; position: absolute; top: 0; left: 0; outline: none; }
-        #node-menu, #edge-menu { position: absolute; display: none; padding: 5px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 100; width: max-content; }
-        #node-menu { background: #D4AF37; border: 2px solid #012B1D; }
+        
+        #node-menu, #edge-menu { position: absolute; display: none; padding: 5px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 100; width: max-content; }
+        #node-menu { background: #D4AF37; border: 2px solid #012B1D; max-width: 280px; display: flex; flex-wrap: wrap; gap: 4px;}
         #edge-menu { background: #012B1D; border: 2px solid #D4AF37; }
-        .f-btn { background: #004D40; color: white; border: 1px solid #D4AF37; padding: 5px 8px; margin: 2px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 13px; }
+        .f-btn { background: #004D40; color: white; border: 1px solid #D4AF37; padding: 6px 10px; margin: 2px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 13px; flex-grow: 1; text-align: center; }
         .f-btn:hover { background: #D4AF37; color: #012B1D; }
         #node-menu .f-btn { background: #012B1D; color: white; border: none; }
         #node-menu .f-btn:hover { background: #004D40; color: white; }
-        .ai-btn { background: #d32f2f !important; color: white !important; font-weight: bold; border: 1px solid white !important; animation: pulse 2s infinite;}
+        .ai-btn { background: #d32f2f !important; color: white !important; font-weight: bold; border: 1px solid white !important; animation: pulse 2s infinite; width: 100%;}
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(211,47,47, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(211,47,47, 0); } 100% { box-shadow: 0 0 0 0 rgba(211,47,47, 0); } }
     </style>
 </head>
@@ -37,6 +40,11 @@
         <div class="click-item item-main" id="btn-spawn">➕ TẠO Ý CHÍNH (GỐC)</div>
 
         <h3 style="color: #D4AF37; font-size: 15px; border-bottom: 1px dashed #004D40; padding-bottom: 5px; margin-top: 15px;">⚙️ ĐIỀU CHỈNH CHUNG</h3>
+        
+        <!-- BỘ TÙY CHỈNH MÀU NỀN MỚI -->
+        <label style="font-size: 13px; display: block; margin-top: 5px; color: #D4AF37;">Màu nền không gian:</label>
+        <input type="color" id="bg-color-picker" value="#0f1714" style="width: 100%; height: 35px; border: 1px solid #D4AF37; border-radius: 5px; margin-bottom: 15px; cursor: pointer; background: #012B1D;">
+
         <button class="action-btn" id="btn-freeze">❄️ Đóng Băng / Mở Chuyển Động</button>
         
         <label style="font-size: 13px; display: block; margin-top: 10px;">Độ giãn của dây: <span id="len-val">150</span></label>
@@ -46,11 +54,16 @@
     <div id="workspace">
         <div id="mynetwork"></div>
         
+        <!-- BẢNG MENU NODE ĐƯỢC BỔ SUNG ĐẦY ĐỦ NÚT -->
         <div id="node-menu">
             <button class="f-btn ai-btn" id="btn-ask-ai">🤖 AI Gợi Ý</button>
             <button class="f-btn" id="btn-add-branch">➕ Đẻ Nhánh</button>
+            <button class="f-btn" id="btn-image">🖼️ Hình</button>
+            <button class="f-btn" id="btn-link">🔗 Link</button>
+            <button class="f-btn" id="btn-edge-text">🔤 Chữ Dây</button>
             <button class="f-btn" id="btn-collapse">➖ Ẩn/Hiện</button>
-            <button class="f-btn" id="btn-shape">🔄 Đổi Hình</button>
+            <button class="f-btn" id="btn-shape">🔄 Hình Dáng</button>
+            <button class="f-btn" id="btn-delete-node" style="background:#d32f2f; color:white;">❌ Xóa</button>
         </div>
 
         <div id="edge-menu">
@@ -93,7 +106,6 @@
                     var nodeMenu = document.getElementById('node-menu');
                     var edgeMenu = document.getElementById('edge-menu');
                     
-                    // Tạo sẵn một nút gốc mặc định để test nhanh
                     var rootId = 1;
                     nodes.add({ id: rootId, label: "GIẢM CÂN AN TOÀN", x: 0, y: 0, color: { background: "#D4AF37", border: "#b8952b" }, font: { size: 20, color: "#012B1D", face: "bold" }, shape: "box" });
 
@@ -104,7 +116,7 @@
                             activeNodeId = params.nodes[0];
                             activeEdgeId = null;
                             edgeMenu.style.display = "none";
-                            nodeMenu.style.display = "block";
+                            nodeMenu.style.display = "flex"; // Đổi thành flex để menu xếp đẹp hơn
                             nodeMenu.style.left = (domPos.x + 20) + "px";
                             nodeMenu.style.top = (domPos.y - 20) + "px";
                         } else if (params.edges.length > 0) {
@@ -122,38 +134,104 @@
 
                     network.on("dragging", function() { nodeMenu.style.display = "none"; edgeMenu.style.display = "none"; });
                     network.on("zoom", function() { nodeMenu.style.display = "none"; edgeMenu.style.display = "none"; });
+                    
+                    // XỬ LÝ CLICK ĐÚP: NẾU CÓ LINK THÌ MỞ LINK, NẾU KHÔNG THÌ SỬA CHỮ
                     network.on("doubleClick", function (params) { 
                         if (params.nodes.length > 0) {
-                            var newLabel = prompt("Nhập nội dung mới:", nodes.get(params.nodes[0]).label);
-                            if (newLabel !== null) nodes.update({id: params.nodes[0], label: newLabel});
+                            let clickedNode = nodes.get(params.nodes[0]);
+                            if (clickedNode.url) {
+                                window.open(clickedNode.url, '_blank');
+                            } else {
+                                var newLabel = prompt("Nhập nội dung mới:", clickedNode.label);
+                                if (newLabel !== null) nodes.update({id: params.nodes[0], label: newLabel});
+                            }
                         } 
                     });
 
-                    // Gắn sự kiện nút bấm
+                    // Gắn sự kiện nút bấm cơ bản
                     document.getElementById('btn-spawn').onclick = spawnMainNode;
                     document.getElementById('btn-freeze').onclick = stopPhysics;
+                    
+                    // Sự kiện đổi màu nền
+                    document.getElementById('bg-color-picker').oninput = function() {
+                        document.getElementById('workspace').style.backgroundColor = this.value;
+                    };
+
                     document.getElementById('range-spring').oninput = function() {
                         document.getElementById('len-val').innerText = this.value;
                         updateSpring(this.value);
                     };
+                    
+                    // Các sự kiện nút menu
                     document.getElementById('btn-ask-ai').onclick = askAIThroughPython;
                     document.getElementById('btn-add-branch').onclick = addBranchFromNode;
                     document.getElementById('btn-collapse').onclick = toggleCollapse;
                     document.getElementById('btn-shape').onclick = changeShapeFast;
+                    
+                    // ================= TÍNH NĂNG MỚI ĐƯỢC BỔ SUNG =================
+                    
+                    document.getElementById('btn-image').onclick = function() {
+                        if (activeNodeId) {
+                            let imgUrl = prompt("Nhập đường dẫn (URL) của hình ảnh trên mạng:");
+                            if (imgUrl) nodes.update({ id: activeNodeId, shape: 'image', image: imgUrl, size: 35 });
+                        }
+                        nodeMenu.style.display = 'none';
+                    };
+
+                    document.getElementById('btn-link').onclick = function() {
+                        if (activeNodeId) {
+                            let linkUrl = prompt("Nhập đường dẫn trang web (Ví dụ: https://bacsiphungtam.com):");
+                            if (linkUrl) nodes.update({ 
+                                id: activeNodeId, 
+                                url: linkUrl, 
+                                font: { color: '#4da6ff', decoration: 'underline' }, 
+                                title: "🌐 Bấm đúp để mở link: " + linkUrl 
+                            });
+                        }
+                        nodeMenu.style.display = 'none';
+                    };
+
+                    document.getElementById('btn-edge-text').onclick = function() {
+                        if (activeNodeId) {
+                            let connectedEdges = network.getConnectedEdges(activeNodeId);
+                            let targetEdge = null;
+                            for (let i = 0; i < connectedEdges.length; i++) {
+                                let e = edges.get(connectedEdges[i]);
+                                if (e.to === activeNodeId) { targetEdge = e; break; }
+                            }
+                            if (targetEdge) {
+                                let text = prompt("Nhập nội dung hiển thị trên dây:", targetEdge.label || "");
+                                if (text !== null) {
+                                    edges.update({
+                                        id: targetEdge.id,
+                                        label: text,
+                                        font: { align: 'top', color: '#D4AF37', size: 14, strokeWidth: 0, background: '#012B1D' }
+                                    });
+                                }
+                            } else {
+                                alert("⚠️ Nút này là Gốc (Ý chính), không có dây nối phía trước để viết chữ!");
+                            }
+                        }
+                        nodeMenu.style.display = 'none';
+                    };
+
+                    document.getElementById('btn-delete-node').onclick = function() {
+                        if (activeNodeId) nodes.remove(activeNodeId);
+                        nodeMenu.style.display = 'none';
+                    };
+
+                    // =============================================================
+
                     document.getElementById('btn-bend').onclick = addBendPoint;
                     document.getElementById('btn-edge-style').onclick = toggleSingleEdgeStyle;
                     document.getElementById('btn-delete-edge').onclick = deleteEdgeFast;
 
-                    // KIỂM TRA XEM PYTHON CÓ TRẢ VỀ KẾT QUẢ AI KHÔNG ĐỂ VẼ LÊN MẠNG
                     if (window.SERVER_AI_RESULT) {
                         if (window.SERVER_AI_RESULT.error) {
                             alert("⚠️ Lỗi AI: " + window.SERVER_AI_RESULT.error);
                         } else if (window.SERVER_AI_RESULT.ideas && window.SERVER_AI_RESULT.ideas.length > 0) {
-                            // Tự động tìm node gốc hoặc tạo node mới dựa trên kết quả trả về
                             var targetName = window.SERVER_AI_RESULT.node || "GIẢM CÂN AN TOÀN";
                             var parentId = rootId;
-                            
-                            // Tìm ID của node đang được hỏi
                             nodes.forEach(function(node) {
                                 if (node.label === targetName) parentId = node.id;
                             });
@@ -207,7 +285,6 @@
             nodes.update({ id: activeNodeId, shape: shapes[next], image: null });
         }
 
-        // ================= GỌI AI THÔNG QUA REOAD AN TOÀN (BỎ FETCH) =================
         function askAIThroughPython() {
             if (!activeNodeId) {
                 alert("⚠️ Thầy chưa chọn node nào để AI gợi ý!");
@@ -217,8 +294,6 @@
             var btnAI = document.getElementById('btn-ask-ai');
             btnAI.innerText = "⏳ Đang tư duy...";
             btnAI.style.background = "#ff9800";
-
-            // Chuyển hướng trang kèm theo tên node để Python xử lý trực tiếp
             window.location.href = window.location.pathname + '?ai_node=' + encodeURIComponent(nodeLabel);
         }
 
