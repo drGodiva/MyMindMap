@@ -14,7 +14,6 @@
         .action-btn { background-color: #00796B; color: white; border: 1px solid #D4AF37; border-radius: 5px; padding: 8px; margin-bottom: 8px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.2s; }
         .action-btn:hover { background-color: #00a884; color: #012B1D; }
         
-        /* ĐỔI NỀN MẶC ĐỊNH SANG ĐEN SANG TRỌNG */
         #workspace { flex: 1; position: relative; background-color: #0f1714; height: 100%; transition: background-color 0.3s; }
         #mynetwork { width: 100%; height: 100%; position: absolute; top: 0; left: 0; outline: none; }
         
@@ -38,10 +37,10 @@
         
         <h2>🛠️ Kho Vật Liệu</h2>
         <div class="click-item item-main" id="btn-spawn">➕ TẠO Ý CHÍNH (GỐC)</div>
+        <div class="click-item" id="btn-clear-mem" style="background:#8B0000; color:white; border: 1px solid #D4AF37; margin-top: 5px;">🗑️ XÓA BẢN ĐỒ LÀM LẠI</div>
 
         <h3 style="color: #D4AF37; font-size: 15px; border-bottom: 1px dashed #004D40; padding-bottom: 5px; margin-top: 15px;">⚙️ ĐIỀU CHỈNH CHUNG</h3>
         
-        <!-- BỘ TÙY CHỈNH MÀU NỀN MỚI -->
         <label style="font-size: 13px; display: block; margin-top: 5px; color: #D4AF37;">Màu nền không gian:</label>
         <input type="color" id="bg-color-picker" value="#0f1714" style="width: 100%; height: 35px; border: 1px solid #D4AF37; border-radius: 5px; margin-bottom: 15px; cursor: pointer; background: #012B1D;">
 
@@ -54,7 +53,6 @@
     <div id="workspace">
         <div id="mynetwork"></div>
         
-        <!-- BẢNG MENU NODE ĐƯỢC BỔ SUNG ĐẦY ĐỦ NÚT -->
         <div id="node-menu">
             <button class="f-btn ai-btn" id="btn-ask-ai">🤖 AI Gợi Ý</button>
             <button class="f-btn" id="btn-add-branch">➕ Đẻ Nhánh</button>
@@ -80,11 +78,31 @@
         var lastClickCanvas = {x: 0, y: 0}; 
         var isFrozen = false;
 
+        // Hàm lưu toàn bộ bản đồ vào trí nhớ
+        function saveMapToMemory() {
+            if(nodes && edges) {
+                localStorage.setItem('mindmap_nodes', JSON.stringify(nodes.get()));
+                localStorage.setItem('mindmap_edges', JSON.stringify(edges.get()));
+            }
+        }
+
         window.addEventListener('load', function() {
             setTimeout(function() {
                 try {
-                    nodes = new vis.DataSet([]);
-                    edges = new vis.DataSet([]);
+                    // --- ĐỌC BỘ NHỚ ĐỆM KHI MỞ TRANG ---
+                    var savedNodes = localStorage.getItem('mindmap_nodes');
+                    var savedEdges = localStorage.getItem('mindmap_edges');
+                    var rootId = 1;
+
+                    if (savedNodes && savedEdges && savedNodes !== "[]") {
+                        nodes = new vis.DataSet(JSON.parse(savedNodes));
+                        edges = new vis.DataSet(JSON.parse(savedEdges));
+                    } else {
+                        nodes = new vis.DataSet([]);
+                        edges = new vis.DataSet([]);
+                        nodes.add({ id: rootId, label: "GIẢM CÂN AN TOÀN", x: 0, y: 0, color: { background: "#D4AF37", border: "#b8952b" }, font: { size: 20, color: "#012B1D", face: "bold" }, shape: "box" });
+                    }
+
                     var container = document.getElementById('mynetwork');
                     if (!container) return;
 
@@ -98,6 +116,7 @@
                                 if (edgeData.from === edgeData.to) { callback(null); return; }
                                 edgeData.color = {color: '#D4AF37', highlight: '#00a884'};
                                 callback(edgeData);
+                                saveMapToMemory(); // Lưu khi tự nối dây
                             }
                         }
                     };
@@ -106,9 +125,6 @@
                     var nodeMenu = document.getElementById('node-menu');
                     var edgeMenu = document.getElementById('edge-menu');
                     
-                    var rootId = 1;
-                    nodes.add({ id: rootId, label: "GIẢM CÂN AN TOÀN", x: 0, y: 0, color: { background: "#D4AF37", border: "#b8952b" }, font: { size: 20, color: "#012B1D", face: "bold" }, shape: "box" });
-
                     network.on("click", function(params) {
                         lastClickCanvas = params.pointer.canvas;
                         var domPos = params.pointer.DOM;
@@ -116,7 +132,7 @@
                             activeNodeId = params.nodes[0];
                             activeEdgeId = null;
                             edgeMenu.style.display = "none";
-                            nodeMenu.style.display = "flex"; // Đổi thành flex để menu xếp đẹp hơn
+                            nodeMenu.style.display = "flex"; 
                             nodeMenu.style.left = (domPos.x + 20) + "px";
                             nodeMenu.style.top = (domPos.y - 20) + "px";
                         } else if (params.edges.length > 0) {
@@ -132,10 +148,11 @@
                         }
                     });
 
+                    network.on("dragEnd", function(params) { saveMapToMemory(); }); // Lưu vị trí khi kéo thả xong
+
                     network.on("dragging", function() { nodeMenu.style.display = "none"; edgeMenu.style.display = "none"; });
                     network.on("zoom", function() { nodeMenu.style.display = "none"; edgeMenu.style.display = "none"; });
                     
-                    // XỬ LÝ CLICK ĐÚP: NẾU CÓ LINK THÌ MỞ LINK, NẾU KHÔNG THÌ SỬA CHỮ
                     network.on("doubleClick", function (params) { 
                         if (params.nodes.length > 0) {
                             let clickedNode = nodes.get(params.nodes[0]);
@@ -143,16 +160,25 @@
                                 window.open(clickedNode.url, '_blank');
                             } else {
                                 var newLabel = prompt("Nhập nội dung mới:", clickedNode.label);
-                                if (newLabel !== null) nodes.update({id: params.nodes[0], label: newLabel});
+                                if (newLabel !== null) {
+                                    nodes.update({id: params.nodes[0], label: newLabel});
+                                    saveMapToMemory();
+                                }
                             }
                         } 
                     });
 
-                    // Gắn sự kiện nút bấm cơ bản
                     document.getElementById('btn-spawn').onclick = spawnMainNode;
                     document.getElementById('btn-freeze').onclick = stopPhysics;
                     
-                    // Sự kiện đổi màu nền
+                    document.getElementById('btn-clear-mem').onclick = function() {
+                        if(confirm("Thầy có chắc muốn xóa sạch toàn bộ bản đồ để làm lại từ đầu?")) {
+                            localStorage.removeItem('mindmap_nodes');
+                            localStorage.removeItem('mindmap_edges');
+                            window.location.href = window.location.pathname; 
+                        }
+                    };
+
                     document.getElementById('bg-color-picker').oninput = function() {
                         document.getElementById('workspace').style.backgroundColor = this.value;
                     };
@@ -162,18 +188,15 @@
                         updateSpring(this.value);
                     };
                     
-                    // Các sự kiện nút menu
                     document.getElementById('btn-ask-ai').onclick = askAIThroughPython;
                     document.getElementById('btn-add-branch').onclick = addBranchFromNode;
                     document.getElementById('btn-collapse').onclick = toggleCollapse;
                     document.getElementById('btn-shape').onclick = changeShapeFast;
                     
-                    // ================= TÍNH NĂNG MỚI ĐƯỢC BỔ SUNG =================
-                    
                     document.getElementById('btn-image').onclick = function() {
                         if (activeNodeId) {
                             let imgUrl = prompt("Nhập đường dẫn (URL) của hình ảnh trên mạng:");
-                            if (imgUrl) nodes.update({ id: activeNodeId, shape: 'image', image: imgUrl, size: 35 });
+                            if (imgUrl) { nodes.update({ id: activeNodeId, shape: 'image', image: imgUrl, size: 35 }); saveMapToMemory(); }
                         }
                         nodeMenu.style.display = 'none';
                     };
@@ -181,12 +204,7 @@
                     document.getElementById('btn-link').onclick = function() {
                         if (activeNodeId) {
                             let linkUrl = prompt("Nhập đường dẫn trang web (Ví dụ: https://bacsiphungtam.com):");
-                            if (linkUrl) nodes.update({ 
-                                id: activeNodeId, 
-                                url: linkUrl, 
-                                font: { color: '#4da6ff', decoration: 'underline' }, 
-                                title: "🌐 Bấm đúp để mở link: " + linkUrl 
-                            });
+                            if (linkUrl) { nodes.update({ id: activeNodeId, url: linkUrl, font: { color: '#4da6ff', decoration: 'underline' }, title: "🌐 Bấm đúp để mở link: " + linkUrl }); saveMapToMemory(); }
                         }
                         nodeMenu.style.display = 'none';
                     };
@@ -202,11 +220,8 @@
                             if (targetEdge) {
                                 let text = prompt("Nhập nội dung hiển thị trên dây:", targetEdge.label || "");
                                 if (text !== null) {
-                                    edges.update({
-                                        id: targetEdge.id,
-                                        label: text,
-                                        font: { align: 'top', color: '#D4AF37', size: 14, strokeWidth: 0, background: '#012B1D' }
-                                    });
+                                    edges.update({ id: targetEdge.id, label: text, font: { align: 'top', color: '#D4AF37', size: 14, strokeWidth: 0, background: '#012B1D' } });
+                                    saveMapToMemory();
                                 }
                             } else {
                                 alert("⚠️ Nút này là Gốc (Ý chính), không có dây nối phía trước để viết chữ!");
@@ -216,22 +231,23 @@
                     };
 
                     document.getElementById('btn-delete-node').onclick = function() {
-                        if (activeNodeId) nodes.remove(activeNodeId);
+                        if (activeNodeId) { nodes.remove(activeNodeId); saveMapToMemory(); }
                         nodeMenu.style.display = 'none';
                     };
-
-                    // =============================================================
 
                     document.getElementById('btn-bend').onclick = addBendPoint;
                     document.getElementById('btn-edge-style').onclick = toggleSingleEdgeStyle;
                     document.getElementById('btn-delete-edge').onclick = deleteEdgeFast;
 
+                    // --- XỬ LÝ KHI PYTHON TRẢ KẾT QUẢ AI VỀ ---
                     if (window.SERVER_AI_RESULT) {
                         if (window.SERVER_AI_RESULT.error) {
                             alert("⚠️ Lỗi AI: " + window.SERVER_AI_RESULT.error);
                         } else if (window.SERVER_AI_RESULT.ideas && window.SERVER_AI_RESULT.ideas.length > 0) {
-                            var targetName = window.SERVER_AI_RESULT.node || "GIẢM CÂN AN TOÀN";
-                            var parentId = rootId;
+                            var targetName = window.SERVER_AI_RESULT.node;
+                            var parentId = rootId; // Mặc định nếu không tìm thấy
+                            
+                            // Tìm node đang được phát triển
                             nodes.forEach(function(node) {
                                 if (node.label === targetName) parentId = node.id;
                             });
@@ -243,7 +259,13 @@
                                 nodes.add({ id: childId, label: idea.toUpperCase(), x: parentPos.x + 200, y: parentPos.y + yOffset, shape: "box", color: { background: "#012B1D", border: "#D4AF37" }, font: { color: "#D4AF37", face: "bold" } });
                                 edges.add({ from: parentId, to: childId, color: {color: '#D4AF37'} });
                             });
+                            
+                            // LƯU NGAY KẾT QUẢ AI VÀO TRÍ NHỚ ĐỂ KHÔNG BAO GIỜ BỊ MẤT NỮA
+                            saveMapToMemory();
                         }
+                        
+                        // Xóa URL query param để F5 lại không bị hỏi AI lần nữa
+                        window.history.replaceState({}, document.title, window.location.pathname);
                     }
 
                 } catch (err) {
@@ -256,6 +278,7 @@
             var id = new Date().getTime();
             var pos = network.getViewPosition();
             nodes.add({ id: id, x: pos.x, y: pos.y, label: "Ý TƯỞNG MỚI", color: { background: "#D4AF37", border: "#b8952b" }, font: { size: 20, color: "#012B1D", face: "bold" }, shape: "box" });
+            saveMapToMemory();
         }
 
         function addBranchFromNode() {
@@ -265,6 +288,7 @@
             nodes.add({ id: childId, label: "Nhánh mới", x: parentPos.x + 180, y: parentPos.y + (Math.random()*60 - 30), shape: "ellipse", color: { background: "#004D40", border: "#00796B" }, font: { color: "white" } });
             edges.add({ from: activeNodeId, to: childId, color: {color: '#D4AF37'} });
             document.getElementById('node-menu').style.display = "none";
+            saveMapToMemory();
         }
 
         function toggleCollapse() {
@@ -274,6 +298,7 @@
                 var isHidden = nodes.get(connectedNodes[0]).hidden;
                 var updates = connectedNodes.map(id => ({id: id, hidden: !isHidden}));
                 nodes.update(updates);
+                saveMapToMemory();
             }
         }
         
@@ -283,6 +308,7 @@
             var current = nodes.get(activeNodeId).shape || 'ellipse';
             var next = (shapes.indexOf(current) + 1) % shapes.length;
             nodes.update({ id: activeNodeId, shape: shapes[next], image: null });
+            saveMapToMemory();
         }
 
         function askAIThroughPython() {
@@ -290,6 +316,10 @@
                 alert("⚠️ Thầy chưa chọn node nào để AI gợi ý!");
                 return;
             }
+            
+            // CHỐT LƯU TRÍ NHỚ TRƯỚC KHI TẢI TRANG ĐI HỎI AI
+            saveMapToMemory();
+
             var nodeLabel = nodes.get(activeNodeId).label;
             var btnAI = document.getElementById('btn-ask-ai');
             btnAI.innerText = "⏳ Đang tư duy...";
@@ -308,14 +338,22 @@
             ]);
             edges.remove(activeEdgeId);
             document.getElementById('edge-menu').style.display = "none";
+            saveMapToMemory();
         }
+        
         function toggleSingleEdgeStyle() {
             if (!activeEdgeId) return;
             var edgeData = edges.get(activeEdgeId);
             var isSmooth = edgeData.smooth && edgeData.smooth.enabled !== false;
             edges.update({ id: activeEdgeId, smooth: { enabled: !isSmooth, type: 'dynamic' } });
+            saveMapToMemory();
         }
-        function deleteEdgeFast() { if (activeEdgeId) edges.remove(activeEdgeId); document.getElementById('edge-menu').style.display = "none"; }
+        
+        function deleteEdgeFast() { 
+            if (activeEdgeId) { edges.remove(activeEdgeId); saveMapToMemory(); } 
+            document.getElementById('edge-menu').style.display = "none"; 
+        }
+        
         function updateSpring(val) { network.setOptions({ physics: { barnesHut: { springLength: Number(val) } } }); }
         function stopPhysics() { isFrozen = !isFrozen; network.setOptions({ physics: { enabled: !isFrozen } }); }
     </script>
